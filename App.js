@@ -9,7 +9,7 @@ import {
   SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET,
   GOOGLE_MAPS_API_KEY,
-} from "@env";
+} from "./env";
 
 import GenreForm from "./GenreForm";
 
@@ -272,8 +272,8 @@ const App = () => {
           promptAsync();
         }}
       />
-      <Button title="Create Playlist" onPress={openGenreModal} />
-      <GenreForm showModal={showModal} setShowModal={setShowModal}  />
+      <Button title="Create Playlist" onPress={createPlaylist} />
+      <GenreForm showModal={showModal} setShowModal={setShowModal} />
     </View>
   );
 };
