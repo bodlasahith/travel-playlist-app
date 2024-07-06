@@ -4,13 +4,13 @@ Jukebox is a unique app that curates a playlist for the duration of your journey
 
 ## Installation
 
-To clone the Jukebox repository and edit it locally, follow these steps:
+To clone the repository and edit it locally, follow these steps:
 
 1. Clone the repository and open the local version into your desired directory
 2. Once the cloning process is complete, navigate into the cloned directory:
 
     ```
-    cd Jukebox
+    cd TravelPlaylistApp
     ```
 
 3. You can now open the project in your preferred code editor and make any necessary changes.
