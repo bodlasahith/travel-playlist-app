@@ -1,5 +1,16 @@
-import { Alert, View, Button, TextInput } from "react-native";
-import React, { useState, useEffect } from "react";
+import {
+  Alert,
+  View,
+  Button,
+  TextInput,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Animated,
+} from "react-native";
+import React, { useState, useEffect, useRef } from "react";
 import MapView, { Marker } from "react-native-maps";
 import axios from "axios";
 import * as AuthSession from "expo-auth-session";
@@ -10,8 +21,6 @@ import {
   SPOTIFY_CLIENT_SECRET,
   GOOGLE_MAPS_API_KEY,
 } from "./env";
-
-import GenreForm from "./GenreForm";
 
 const clientId = SPOTIFY_CLIENT_ID;
 const clientSecret = SPOTIFY_CLIENT_SECRET;
@@ -26,7 +35,7 @@ const discovery = {
 
 const App = () => {
   const [accessToken, setAccessToken] = useState("");
-
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [travelTime, setTravelTime] = useState(null);
   const [destination, setDestination] = useState("");
   const [markerPosition, setMarkerPosition] = useState(null);
@@ -37,8 +46,38 @@ const App = () => {
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [genres, setGenres] = useState([]);
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const nameOpacity = useRef(new Animated.Value(0)).current;
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
 
-  const [showModal, setShowModal] = useState(false);
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(nameOpacity, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(subtitleOpacity, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonOpacity, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -117,6 +156,7 @@ const App = () => {
     const data = await response.json();
 
     setAccessToken(data.access_token);
+    setIsAuthenticated(true);
   };
 
   useEffect(() => {
@@ -152,7 +192,7 @@ const App = () => {
       );
 
       if (response.data.status === "OK" && response.data.routes.length > 0) {
-        const travelTime = response.data.routes[0].legs[0].duration.value; // travel time in seconds
+        const travelTime = response.data.routes[0].legs[0].duration.value;
         return travelTime;
       } else {
         console.error("Error in response from Directions API:", response.data);
@@ -167,7 +207,9 @@ const App = () => {
   const fetchSongs = async (accessToken, travelTime) => {
     try {
       const response = await fetch(
-        `https://api.spotify.com/v1/recommendations?limit=50&seed_genres=rap,pop`,
+        `https://api.spotify.com/v1/recommendations?limit=50&seed_genres=${selectedGenres.join(
+          ","
+        )}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -189,7 +231,7 @@ const App = () => {
       for (const track of data.tracks) {
         totalDuration += track.duration_ms;
         songs.push(track);
-        if (totalDuration >= travelTime * 1000) break; // travelTime is in seconds, convert to ms
+        if (totalDuration >= travelTime * 1000) break;
       }
 
       return songs;
@@ -198,8 +240,26 @@ const App = () => {
     }
   };
 
-  const openGenreModal = () => {
-    setShowModal(true);
+  const getDestinationAddress = async () => {
+    try {
+      const currentPositionResponse = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${currentPosition.latitude},${currentPosition.longitude}&key=${googleAPIkey}`
+      );
+      const markerPositionResponse = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${markerPosition.latitude},${markerPosition.longitude}&key=${googleAPIkey}`
+      );
+      const currentPositionAddress =
+        currentPositionResponse.data.results[0].formatted_address;
+      const markerPositionAddress =
+        markerPositionResponse.data.results[0].formatted_address;
+      return {
+        currentPositionAddress,
+        markerPositionAddress,
+      };
+    } catch (error) {
+      console.error("Error fetching destination addresses:", error);
+      throw error;
+    }
   };
 
   const createPlaylist = async () => {
@@ -211,6 +271,8 @@ const App = () => {
 
     const songs = await fetchSongs(accessToken, travelTime);
 
+    const locationAddresses = await getDestinationAddress();
+
     const response = await fetch(`https://api.spotify.com/v1/me/playlists`, {
       method: "POST",
       headers: {
@@ -219,7 +281,7 @@ const App = () => {
       },
       body: JSON.stringify({
         name: "Travel Playlist",
-        description: "Playlist curated for your trip",
+        description: `Playlist curated for your trip from ${locationAddresses.currentPositionAddress} to ${locationAddresses.markerPositionAddress}`,
         public: true,
       }),
     });
@@ -238,9 +300,46 @@ const App = () => {
     });
   };
 
+  useEffect(() => {
+    const fetchGenres = async () => {
+      const response = await fetch(
+        "https://api.spotify.com/v1/recommendations/available-genre-seeds",
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      const data = await response.json();
+      setGenres(data.genres);
+    };
+
+    fetchGenres();
+  }, [accessToken]);
+
+  const handleGenreChange = (genre) => {
+    if (selectedGenres.includes(genre)) {
+      setSelectedGenres(selectedGenres.filter((g) => g !== genre));
+    } else {
+      setSelectedGenres([...selectedGenres, genre]);
+    }
+  };
+
+  const handleSubmit = () => {
+    setSelectedGenres(selectedGenres);
+    createPlaylist();
+    onClose();
+  };
+
+  const onClose = () => {
+    setIsModalOpen(false);
+  };
+
+  const onOpen = () => {
+    setIsModalOpen(true);
+  };
+
   return (
-    <View style={{ flex: 1 }}>
-      <MapView style={{ flex: 1 }} region={region}>
+    <View style={styles.view}>
+      <MapView style={styles.mapView} region={region}>
         {markerPosition && <Marker coordinate={markerPosition} />}
         {currentPosition && (
           <Marker
@@ -251,31 +350,153 @@ const App = () => {
         )}
       </MapView>
       <TextInput
-        style={{
-          position: "absolute",
-          top: 40,
-          left: 10,
-          right: 10,
-          backgroundColor: "white",
-          padding: 10,
-          borderRadius: 5,
-        }}
+        style={styles.textInput}
         placeholder="Enter destination"
         value={destination}
         onChangeText={setDestination}
         onSubmitEditing={handleDestinationSubmit}
       />
-      <Button
-        disabled={!request}
-        title="Login with Spotify"
-        onPress={() => {
-          promptAsync();
-        }}
-      />
-      <Button title="Create Playlist" onPress={createPlaylist} />
-      <GenreForm showModal={showModal} setShowModal={setShowModal} />
+      {isAuthenticated ? null : (
+        <View style={styles.fullScreenView}>
+          <Animated.Image
+            source={require("./assets/jukebox_logo.png")}
+            style={[styles.logo, { opacity: logoOpacity }]}
+          />
+          <Animated.Text style={[styles.name, { opacity: nameOpacity }]}>
+            Jukebox
+          </Animated.Text>
+          <Animated.Text
+            style={[styles.subtitle, { opacity: subtitleOpacity }]}
+          >
+            Curate Your Journey
+          </Animated.Text>
+          <Animated.View style={{ opacity: buttonOpacity }}>
+            <TouchableOpacity
+              disabled={!request}
+              onPress={() => {
+                promptAsync();
+              }}
+              style={styles.loginButton}
+            >
+              <Text style={styles.loginButtonText}>Login with Spotify</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      )}
+      {isModalOpen ? (
+        <View style={styles.modal}>
+          <Text style={styles.title}>Select Genres</Text>
+          <ScrollView style={styles.scrollView}>
+            {genres.map((genre) => (
+              <TouchableOpacity
+                key={genre}
+                style={styles.genreItem}
+                onPress={() => handleGenreChange(genre)}
+              >
+                <Text
+                  style={{
+                    color: selectedGenres.includes(genre) ? "blue" : "black",
+                  }}
+                >
+                  {genre}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity onPress={handleSubmit} style={styles.button}>
+            <Text>Create Playlist</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onClose} style={styles.button}>
+            <Text>Close</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <Button title="Create Playlist" onPress={onOpen} />
+      )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  view: {
+    flex: 1,
+  },
+  mapView: {
+    flex: 1,
+  },
+  fullScreenView: {
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#191414",
+  },
+  logo: {
+    width: 200,
+    height: 300,
+    shadowColor: "#FFFFFF", // Black color for the shadow
+    shadowOffset: { width: 0, height: 4 }, // Shadow direction and distance
+    shadowRadius: 10, // Blur radius
+    shadowOpacity: 0.3,
+  },
+  name: {
+    color: "#FFFFFF",
+    marginBottom: 20,
+    fontSize: 60,
+    fontWeight: "bold",
+    textAlign: "center",
+    textShadowColor: "rgba(255, 255, 255, 0.75)",
+    textShadowRadius: 5,
+  },
+  subtitle: {
+    color: "lightgray",
+    marginBottom: 200,
+    fontSize: 16,
+    textAlign: "center",
+  },
+  loginButton: {
+    backgroundColor: "#1DB954",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loginButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  textInput: {
+    position: "absolute",
+    top: 40,
+    left: 10,
+    right: 10,
+    backgroundColor: "white",
+    padding: 10,
+    borderRadius: 5,
+  },
+  modal: {
+    padding: 20,
+    backgroundColor: "white",
+    borderRadius: 10,
+  },
+  scrollView: {
+    maxHeight: 200,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 20,
+    marginBottom: 20,
+  },
+  genreItem: {
+    paddingVertical: 10,
+  },
+  button: {
+    marginTop: 10,
+    backgroundColor: "#ddd",
+    padding: 10,
+    borderRadius: 5,
+  },
+});
 
 export default App;
