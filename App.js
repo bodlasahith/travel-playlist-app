@@ -45,9 +45,11 @@ const App = () => {
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGenreModalOpen, setIsGenreModalOpen] = useState(false);
   const [genres, setGenres] = useState([]);
   const [selectedGenres, setSelectedGenres] = useState([]);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const nameOpacity = useRef(new Animated.Value(0)).current;
   const subtitleOpacity = useRef(new Animated.Value(0)).current;
@@ -325,26 +327,40 @@ const App = () => {
   const handleSubmit = () => {
     setSelectedGenres(selectedGenres);
     createPlaylist();
-    onClose();
+    closeGenreModal();
   };
 
-  const onClose = () => {
-    setIsModalOpen(false);
+  const closeGenreModal = () => {
+    setIsGenreModalOpen(false);
   };
 
-  const onOpen = () => {
-    setIsModalOpen(true);
+  const openGenreModal = () => {
+    setIsGenreModalOpen(true);
+  };
+
+  const closeHelpModal = () => {
+    setIsHelpModalOpen(false);
+  };
+
+  const openHelpModal = () => {
+    setIsHelpModalOpen(true);
   };
 
   return (
     <View style={styles.view}>
       <MapView style={styles.mapView} region={region}>
-        {markerPosition && <Marker coordinate={markerPosition} />}
         {currentPosition && (
           <Marker
             coordinate={currentPosition}
             title="Your Location"
             pinColor="blue"
+          />
+        )}
+        {markerPosition && (
+          <Marker
+            coordinate={markerPosition}
+            title="Destination"
+            pinColor="red"
           />
         )}
       </MapView>
@@ -382,8 +398,8 @@ const App = () => {
           </Animated.View>
         </View>
       )}
-      {isModalOpen ? (
-        <View style={styles.modal}>
+      {isGenreModalOpen ? (
+        <View style={styles.genreModal}>
           <Text style={styles.title}>Select Genres</Text>
           <ScrollView style={styles.scrollView}>
             {genres.map((genre) => (
@@ -402,16 +418,42 @@ const App = () => {
               </TouchableOpacity>
             ))}
           </ScrollView>
-          <TouchableOpacity onPress={handleSubmit} style={styles.button}>
+          <TouchableOpacity
+            disabled={!selectedGenres || selectedGenres.length === 0}
+            onPress={handleSubmit}
+            style={styles.button}
+          >
             <Text>Create Playlist</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onClose} style={styles.button}>
+          <TouchableOpacity onPress={closeGenreModal} style={styles.button}>
             <Text>Close</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <Button title="Create Playlist" onPress={onOpen} />
+        <View>
+          <Button
+            disabled={destination.trim().length === 0}
+            title="Create Playlist"
+            onPress={openGenreModal}
+          />
+          <Button
+            title="Open Help"
+            onPress={openHelpModal}
+          />
+        </View>
       )}
+      {isHelpModalOpen ? (
+        <View style={styles.genreModal}>
+          <Text style={styles.title}>Help</Text>
+          <Text>1. Enter your destination in the search bar and press Enter.</Text>
+          <Text>2. Click on Create Playlist to select genres.</Text>
+          <Text>3. Select genres and click Create Playlist again.</Text>
+          <Text>4. Your playlist will be created on Spotify.</Text>
+          <TouchableOpacity onPress={closeHelpModal} style={styles.button}>
+            <Text onClick={closeHelpModal}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -474,7 +516,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
   },
-  modal: {
+  genreModal: {
     padding: 20,
     backgroundColor: "white",
     borderRadius: 10,
