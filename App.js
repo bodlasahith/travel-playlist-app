@@ -7,7 +7,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Animated,
 } from "react-native";
 import React, { useState, useEffect, useRef } from "react";
@@ -433,9 +432,9 @@ const styles = StyleSheet.create({
   logo: {
     width: 200,
     height: 300,
-    shadowColor: "#FFFFFF", // Black color for the shadow
-    shadowOffset: { width: 0, height: 4 }, // Shadow direction and distance
-    shadowRadius: 10, // Blur radius
+    shadowColor: "#FFFFFF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10
     shadowOpacity: 0.3,
   },
   name: {
