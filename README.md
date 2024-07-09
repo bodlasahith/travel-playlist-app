@@ -20,7 +20,7 @@ To clone the repository and edit it locally, follow these steps:
     ```
     npm install
     ```
-7. Before running the app, go to node_modules/react-native-maps/lib/MapMarker.js:32 and delete the line (error w/ React Native Maps Marker and Expo. See https://github.com/react-native-maps/react-native-maps/issues/4861#issuecomment-2212324643 )
+7. Before running the app, go to node_modules/react-native-maps/lib/MapMarker.js:32 and delete the line (error w/ React Native Maps Marker and Expo. See https://github.com/react-native-maps/react-native-maps/issues/4861#issuecomment-2160240154)
 8. Start the app using Expo by running the following command:
 
     ```
