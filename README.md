@@ -27,3 +27,5 @@ To clone the repository and edit it locally, follow these steps:
     npm start
     ```
    This will launch the Jukebox app on Expo, allowing you to test it on your device or emulator.
+
+https://github.com/bodlasahith/TravelPlaylistApp/assets/56140222/7fac6e78-915a-47c6-bdf1-3e0fba77b109
