@@ -15,11 +15,7 @@ import axios from "axios";
 import * as AuthSession from "expo-auth-session";
 import * as Location from "expo-location";
 import * as WebBrowser from "expo-web-browser";
-import {
-  SPOTIFY_CLIENT_ID,
-  SPOTIFY_CLIENT_SECRET,
-  GOOGLE_MAPS_API_KEY,
-} from "./env";
+import { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, GOOGLE_MAPS_API_KEY } from "./env";
 
 const clientId = SPOTIFY_CLIENT_ID;
 const clientSecret = SPOTIFY_CLIENT_SECRET;
@@ -35,7 +31,6 @@ const discovery = {
 const App = () => {
   const [accessToken, setAccessToken] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [travelTime, setTravelTime] = useState(null);
   const [destination, setDestination] = useState("");
   const [markerPosition, setMarkerPosition] = useState(null);
   const [currentPosition, setCurrentPosition] = useState(null);
@@ -49,6 +44,8 @@ const App = () => {
   const [genres, setGenres] = useState([]);
   const [selectedGenres, setSelectedGenres] = useState([]);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [enteredHours, setEnteredHours] = useState(0);
+  const [enteredMinutes, setEnteredMinutes] = useState(0);
 
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const nameOpacity = useRef(new Animated.Value(0)).current;
@@ -151,8 +148,8 @@ const App = () => {
       }).toString(),
     };
 
-    const response = await fetch(discovery.tokenEndpoint, payload).catch(
-      (error) => console.error("Error:", error)
+    const response = await fetch(discovery.tokenEndpoint, payload).catch((error) =>
+      console.error("Error:", error)
     );
     const data = await response.json();
 
@@ -168,6 +165,8 @@ const App = () => {
   }, [response]);
 
   const handleDestinationSubmit = async () => {
+    if (destination.trim().length === 0) return;
+
     try {
       const response = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json?address=${destination}&key=${googleAPIkey}`
@@ -219,9 +218,7 @@ const App = () => {
       );
 
       if (!response.ok) {
-        throw new Error(
-          `Spotify API error: ${response.status} ${response.statusText}`
-        );
+        throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -249,10 +246,8 @@ const App = () => {
       const markerPositionResponse = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${markerPosition.latitude},${markerPosition.longitude}&key=${googleAPIkey}`
       );
-      const currentPositionAddress =
-        currentPositionResponse.data.results[0].formatted_address;
-      const markerPositionAddress =
-        markerPositionResponse.data.results[0].formatted_address;
+      const currentPositionAddress = currentPositionResponse.data.results[0].formatted_address;
+      const markerPositionAddress = markerPositionResponse.data.results[0].formatted_address;
       return {
         currentPositionAddress,
         markerPositionAddress,
@@ -264,11 +259,15 @@ const App = () => {
   };
 
   const createPlaylist = async () => {
-    const origin = `${currentPosition.latitude},${currentPosition.longitude}`;
-    const destination = `${markerPosition.latitude},${markerPosition.longitude}`;
+    let travelTime;
+    if (enteredHours && enteredMinutes) {
+      travelTime = enteredHours * 3600 + enteredMinutes * 60;
+    } else {
+      const origin = `${currentPosition.latitude},${currentPosition.longitude}`;
+      const destination = `${markerPosition.latitude},${markerPosition.longitude}`;
 
-    const travelTime = await getTravelTime(origin, destination);
-    setTravelTime(travelTime);
+      travelTime = await getTravelTime(origin, destination);
+    }
 
     const songs = await fetchSongs(accessToken, travelTime);
 
@@ -299,10 +298,13 @@ const App = () => {
         uris: songs.map((song) => song.uri),
       }),
     });
+
+    Alert.alert("Playlist created successfully!");
   };
 
   useEffect(() => {
     const fetchGenres = async () => {
+      if (!accessToken) return;
       const response = await fetch(
         "https://api.spotify.com/v1/recommendations/available-genre-seeds",
         {
@@ -350,23 +352,16 @@ const App = () => {
     <View style={styles.view}>
       <MapView style={styles.mapView} region={region}>
         {currentPosition && (
-          <Marker
-            coordinate={currentPosition}
-            title="Your Location"
-            pinColor="blue"
-          />
+          <Marker coordinate={currentPosition} title="Your Location" pinColor="blue" />
         )}
         {markerPosition && (
-          <Marker
-            coordinate={markerPosition}
-            title="Destination"
-            pinColor="red"
-          />
+          <Marker coordinate={markerPosition} title="Destination" pinColor="red" />
         )}
       </MapView>
       <TextInput
         style={styles.textInput}
-        placeholder="Enter destination"
+        placeholder="Enter destination..."
+        placeholderTextColor="gray"
         value={destination}
         onChangeText={setDestination}
         onSubmitEditing={handleDestinationSubmit}
@@ -377,12 +372,8 @@ const App = () => {
             source={require("./assets/jukebox_logo.png")}
             style={[styles.logo, { opacity: logoOpacity }]}
           />
-          <Animated.Text style={[styles.name, { opacity: nameOpacity }]}>
-            Jukebox
-          </Animated.Text>
-          <Animated.Text
-            style={[styles.subtitle, { opacity: subtitleOpacity }]}
-          >
+          <Animated.Text style={[styles.name, { opacity: nameOpacity }]}>Jukebox</Animated.Text>
+          <Animated.Text style={[styles.subtitle, { opacity: subtitleOpacity }]}>
             Curate Your Journey
           </Animated.Text>
           <Animated.View style={{ opacity: buttonOpacity }}>
@@ -391,8 +382,7 @@ const App = () => {
               onPress={() => {
                 promptAsync();
               }}
-              style={styles.loginButton}
-            >
+              style={styles.loginButton}>
               <Text style={styles.loginButtonText}>Login with Spotify</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -400,19 +390,35 @@ const App = () => {
       )}
       {isGenreModalOpen ? (
         <View style={styles.genreModal}>
+          <Text style={styles.title}>Enter trip duration (optional if not known)</Text>
+          <TextInput
+            style={styles.hoursInput}
+            placeholder="hours"
+            placeholderTextColor="gray"
+            inputMode="numeric"
+            value={enteredHours}
+            onChangeText={setEnteredHours}
+          />
+          <TextInput
+            style={styles.minutesInput}
+            placeholder="minutes"
+            placeholderTextColor="gray"
+            inputMode="numeric"
+            value={enteredMinutes}
+            onChangeText={setEnteredMinutes}
+          />
           <Text style={styles.title}>Select Genres</Text>
           <ScrollView style={styles.scrollView}>
             {genres.map((genre) => (
               <TouchableOpacity
                 key={genre}
                 style={styles.genreItem}
-                onPress={() => handleGenreChange(genre)}
-              >
+                onPress={() => handleGenreChange(genre)}>
                 <Text
                   style={{
                     color: selectedGenres.includes(genre) ? "blue" : "black",
-                  }}
-                >
+                    backgroundColor: selectedGenres.includes(genre) ? "lightblue" : "white",
+                  }}>
                   {genre}
                 </Text>
               </TouchableOpacity>
@@ -421,8 +427,7 @@ const App = () => {
           <TouchableOpacity
             disabled={!selectedGenres || selectedGenres.length === 0}
             onPress={handleSubmit}
-            style={styles.button}
-          >
+            style={styles.button}>
             <Text>Create Playlist</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={closeGenreModal} style={styles.button}>
@@ -436,10 +441,7 @@ const App = () => {
             title="Create Playlist"
             onPress={openGenreModal}
           />
-          <Button
-            title="Open Help"
-            onPress={openHelpModal}
-          />
+          <Button title="Open Help" onPress={openHelpModal} />
         </View>
       )}
       {isHelpModalOpen ? (
@@ -524,10 +526,28 @@ const styles = StyleSheet.create({
   scrollView: {
     maxHeight: 200,
     marginBottom: 20,
+    borderColor: "gray",
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 5,
   },
   title: {
     fontSize: 20,
     marginBottom: 20,
+  },
+  hoursInput: {
+    marginBottom: 5,
+    borderColor: "gray",
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 5,
+  },
+  minutesInput: {
+    marginBottom: 20,
+    borderColor: "gray",
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 5,
   },
   genreItem: {
     paddingVertical: 10,
