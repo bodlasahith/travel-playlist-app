@@ -207,7 +207,7 @@ const App = () => {
   const fetchSongs = async (accessToken, travelTime) => {
     try {
       const response = await fetch(
-        `https://api.spotify.com/v1/recommendations?limit=50&seed_genres=${selectedGenres.join(
+        `https://api.spotify.com/v1/recommendations?limit=100&seed_genres=${selectedGenres.join(
           ","
         )}`,
         {
@@ -390,7 +390,8 @@ const App = () => {
       )}
       {isGenreModalOpen ? (
         <View style={styles.genreModal}>
-          <Text style={styles.title}>Enter trip duration (optional if not known)</Text>
+          <Text style={styles.title}>Enter trip duration (OPTIONAL)</Text>
+          <Text style={styles.subtext}>Max duration for a new playlist is 6-7 hours</Text>
           <TextInput
             style={styles.hoursInput}
             placeholder="hours"
@@ -534,6 +535,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     marginBottom: 20,
+  },
+  subtext: {
+    color: "gray",
+    fontSize: 12,
+    marginBottom: 10,
   },
   hoursInput: {
     marginBottom: 5,
