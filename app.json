@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "TravelPlaylistApp",
-    "slug": "TravelPlaylistApp",
+    "name": "travel-playlist-app",
+    "slug": "travel-playlist-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bodlasahith.TravelPlaylistApp"
+      "bundleIdentifier": "com.bodlasahith.travel-playlist-app"
     },
     "android": {
       "adaptiveIcon": {

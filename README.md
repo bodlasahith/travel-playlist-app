@@ -10,7 +10,7 @@ To clone the repository and edit it locally, follow these steps:
 3. Once the cloning process is complete, navigate into the cloned directory:
 
     ```
-    cd TravelPlaylistApp
+    cd travel-playlist-app
     ```
 
 4. You can now open the project in your preferred code editor and make any necessary changes.
